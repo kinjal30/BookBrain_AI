@@ -303,13 +303,19 @@ export async function deleteBook(id: number): Promise<boolean> {
 export async function getBookSummary(bookId: number): Promise<string | null> {
   await initializeDatabase()
   try {
+    console.log(`Querying database for summary of book ID: ${bookId}`)
     const result = await sql`SELECT summary FROM book_summaries WHERE book_id = ${bookId}`
+    console.log(`Query result for book summary: ${JSON.stringify(result)}`)
+
     if (result.length === 0) {
+      console.log(`No summary found for book ID: ${bookId}`)
       return null
     }
+
+    console.log(`Found summary for book ID: ${bookId}`)
     return result[0].summary
   } catch (error) {
-    console.error("Error getting book summary:", error)
+    console.error(`Error getting book summary for book ID ${bookId}:`, error)
     return null
   }
 }
@@ -317,15 +323,17 @@ export async function getBookSummary(bookId: number): Promise<string | null> {
 export async function saveBookSummary(bookId: number, summary: string): Promise<boolean> {
   await initializeDatabase()
   try {
+    console.log(`Saving summary for book ID: ${bookId}`)
     await sql`
       INSERT INTO book_summaries (book_id, summary) 
       VALUES (${bookId}, ${summary}) 
       ON CONFLICT (book_id) 
       DO UPDATE SET summary = ${summary}, updated_at = CURRENT_TIMESTAMP
     `
+    console.log(`Successfully saved summary for book ID: ${bookId}`)
     return true
   } catch (error) {
-    console.error("Error saving book summary:", error)
+    console.error(`Error saving book summary for book ID ${bookId}:`, error)
     return false
   }
 }

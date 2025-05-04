@@ -7,6 +7,7 @@ export async function generateAIText(prompt: string, maxTokens = 1000) {
       return "API key not configured. Please add your OpenAI API key to the environment variables."
     }
 
+    console.log("Making request to OpenAI API")
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -14,7 +15,7 @@ export async function generateAIText(prompt: string, maxTokens = 1000) {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-3.5-turbo", // Fallback to a more available model
         messages: [{ role: "user", content: prompt }],
         max_tokens: maxTokens,
       }),
@@ -23,6 +24,7 @@ export async function generateAIText(prompt: string, maxTokens = 1000) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const status = response.status
+      console.error(`OpenAI API error: ${status}`, errorData)
 
       // Handle rate limiting specifically
       if (status === 429) {
@@ -34,6 +36,7 @@ export async function generateAIText(prompt: string, maxTokens = 1000) {
     }
 
     const data = await response.json()
+    console.log("Successfully received response from OpenAI API")
     return data.choices[0].message.content
   } catch (error) {
     console.error("Error generating AI text:", error)

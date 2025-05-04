@@ -18,17 +18,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     // Check cache first
     const cachedSummary = summaryCache.get(bookId)
     if (cachedSummary && Date.now() - cachedSummary.timestamp < CACHE_TTL) {
+      console.log(`Returning cached summary for book ${bookId}`)
       return NextResponse.json({ summary: cachedSummary.summary })
     }
 
     // Try to get existing summary from database
+    console.log(`Fetching summary from database for book ${bookId}`)
     const dbSummary = await getBookSummary(Number.parseInt(bookId))
+
     if (dbSummary) {
+      console.log(`Found summary in database for book ${bookId}`)
       // Update cache
       summaryCache.set(bookId, { summary: dbSummary, timestamp: Date.now() })
       return NextResponse.json({ summary: dbSummary })
     }
 
+    console.log(`No summary found in database for book ${bookId}, generating new summary`)
     // If no summary exists, generate one
     const book = await getBookById(Number.parseInt(bookId))
     if (!book) {
@@ -40,11 +45,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     The book is about: ${book.description || "Not provided"}. 
     Focus on the main themes, plot, and significance of the book.`
 
+    console.log(`Generating AI summary for book ${bookId}`)
     const generatedSummary = await generateAIText(prompt, 500)
 
     // Try to save the summary to the database if it's not a fallback
     if (!generatedSummary.includes("We're currently experiencing high demand")) {
       try {
+        console.log(`Saving generated summary to database for book ${bookId}`)
         await saveBookSummary(Number.parseInt(bookId), generatedSummary)
       } catch (saveError) {
         console.error("Error saving summary to database:", saveError)

@@ -16,14 +16,17 @@ export async function searchBooks(query: string): Promise<Book[]> {
 
 export async function getBookSummary(bookId: string): Promise<string> {
   try {
+    console.log(`API client: Fetching summary for book ${bookId}`)
     const response = await fetch(`/api/books/${bookId}/summary`)
     if (!response.ok) {
+      console.error(`API client: Error fetching summary, status: ${response.status}`)
       throw new Error("Failed to get summary")
     }
     const data = await response.json()
+    console.log(`API client: Successfully fetched summary for book ${bookId}`)
     return data.summary
   } catch (error) {
-    console.error("Error getting book summary:", error)
+    console.error("API client: Error getting book summary:", error)
     throw error
   }
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import type { Book } from "@/types/book"
 import { getBookSummary } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, BookPlus, Check, AlertCircle } from "lucide-react"
+import { Loader2, BookPlus, Check, AlertCircle, RefreshCw } from "lucide-react"
 import { addToLibrary, removeFromLibrary } from "@/app/actions/books"
 
 interface BookCardProps {
@@ -59,6 +59,7 @@ export function BookCard({ book, inLibrary = false }: BookCardProps) {
     setLoading(true)
     setSummaryError(false)
     try {
+      console.log(`Fetching summary for book: ${book.id} - ${book.title}`)
       const bookSummary = await getBookSummary(book.id)
       setSummary(bookSummary)
       setShowSummary(true)
@@ -84,6 +85,45 @@ export function BookCard({ book, inLibrary = false }: BookCardProps) {
         `We're currently experiencing high demand and couldn't generate a custom summary for "${book.title}" at this moment. Please try again later.`,
       )
       setShowSummary(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefreshSummary = async () => {
+    setLoading(true)
+    setSummaryError(false)
+    try {
+      // Add a cache-busting parameter
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/books/${book.id}/summary?refresh=${timestamp}`)
+      if (!response.ok) {
+        throw new Error("Failed to refresh summary")
+      }
+      const data = await response.json()
+      setSummary(data.summary)
+
+      // Check if we got a fallback or error message
+      if (
+        data.summary.includes("We're currently experiencing high demand") ||
+        data.summary.includes("Unable to generate summary")
+      ) {
+        setSummaryError(true)
+      } else {
+        setSummaryError(false)
+        toast({
+          title: "Summary Updated",
+          description: "The book summary has been refreshed.",
+        })
+      }
+    } catch (error) {
+      console.error("Error refreshing summary:", error)
+      setSummaryError(true)
+      toast({
+        title: "Refresh Failed",
+        description: "We couldn't refresh the summary right now. Please try again later.",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -164,10 +204,18 @@ export function BookCard({ book, inLibrary = false }: BookCardProps) {
 
         {showSummary && summary && (
           <div className="mt-4">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              Summary
-              {summaryError && <AlertCircle className="h-4 w-4 text-amber-500" title="Generated with fallback" />}
-            </h4>
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="font-semibold flex items-center gap-2">
+                Summary
+                {summaryError && <AlertCircle className="h-4 w-4 text-amber-500" title="Generated with fallback" />}
+              </h4>
+              {summaryError && (
+                <Button variant="ghost" size="sm" onClick={handleRefreshSummary} disabled={loading}>
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Retry
+                </Button>
+              )}
+            </div>
             <p className="text-sm">{summary}</p>
           </div>
         )}
@@ -177,7 +225,7 @@ export function BookCard({ book, inLibrary = false }: BookCardProps) {
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating Summary
+              {summary ? "Refreshing..." : "Generating Summary"}
             </>
           ) : showSummary ? (
             "Hide Summary"
